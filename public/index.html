@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Transcript Tool</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3248;
+      --accent: #5865f2;
+      --accent-hover: #4752c4;
+      --text: #e8eaf6;
+      --text-muted: #8b8fa8;
+      --transcript-bg: #1e2535;
+      --transcript-border: #3a4a6b;
+      --transcript-badge: #3b82f6;
+      --auto-bg: #2a2010;
+      --auto-border: #b45309;
+      --auto-badge: #f59e0b;
+      --annotation-bg: #1a2420;
+      --annotation-border: #166534;
+      --annotation-badge: #22c55e;
+      --error: #ef4444;
+      --success: #22c55e;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #5865f2, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 22px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--border);
+    }
+
+    .lang-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .lang-row label {
+      margin: 0;
+      font-size: 0.8rem;
+    }
+
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: var(--text);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    /* Status / spinner */
+    #status {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    #error-box {
+      display: none;
+      background: #2a1515;
+      border: 1px solid #7f1d1d;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      color: #fca5a5;
+    }
+
+    #error-box strong { display: block; margin-bottom: 4px; color: var(--error); }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* Stats bar */
+    #stats-bar {
+      display: none;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 14px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .stat { display: flex; align-items: center; gap: 6px; }
+    .stat strong { color: var(--text); }
+
+    /* Results header */
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .results-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .btn-group { display: flex; gap: 8px; }
+
+    /* Segments container */
+    #segments-container {
+      display: none;
+    }
+
+    #segments {
+      max-height: 480px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .segment {
+      display: flex;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 2px;
+      border-left: 3px solid transparent;
+      transition: background 0.15s;
+      align-items: flex-start;
+    }
+
+    .segment:hover { filter: brightness(1.1); }
+
+    .segment.transcript {
+      background: var(--transcript-bg);
+      border-left-color: var(--transcript-border);
+    }
+
+    .segment.auto {
+      background: var(--auto-bg);
+      border-left-color: var(--auto-border);
+    }
+
+    .segment.annotation {
+      background: var(--annotation-bg);
+      border-left-color: var(--annotation-border);
+    }
+
+    .seg-ts {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+      padding-top: 3px;
+      min-width: 48px;
+    }
+
+    .seg-body { flex: 1; }
+
+    .seg-text {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .seg-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .badge-transcript { background: var(--transcript-badge); color: #fff; }
+    .badge-auto { background: var(--auto-badge); color: #1c1400; }
+    .badge-annotation { background: var(--annotation-badge); color: #0a1f10; }
+
+    /* Full text area */
+    #fulltext-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .fulltext-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .fulltext-header h2 { font-size: 1rem; font-weight: 600; }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      color: var(--text);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      resize: vertical;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    textarea:focus { outline: none; border-color: var(--accent); }
+
+    .copied-msg {
+      color: var(--success);
+      font-size: 0.82rem;
+      display: none;
+    }
+
+    /* Search */
+    #search-row {
+      display: none;
+      margin-bottom: 12px;
+    }
+
+    #search-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    #search-input:focus { border-color: var(--accent); }
+
+    .highlight { background: #fbbf24; color: #1c1400; border-radius: 2px; padding: 0 2px; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .input-row { flex-direction: column; }
+      header h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🎬 YouTube Transcript Tool</h1>
+    <p>Plak een YouTube-link en bekijk het volledige transcript met bronvermelding per fragment</p>
+  </header>
+
+  <!-- Input card -->
+  <div class="card">
+    <label for="url-input">YouTube URL</label>
+    <div class="input-row">
+      <input
+        type="text"
+        id="url-input"
+        placeholder="https://www.youtube.com/watch?v=... of https://youtu.be/..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn" id="fetch-btn" onclick="fetchTranscript()">
+        <span>▶</span> Transcript ophalen
+      </button>
+    </div>
+    <div class="lang-row">
+      <label for="lang-select">Taalvoorkeur:</label>
+      <select id="lang-select">
+        <option value="">Automatisch</option>
+        <option value="nl">Nederlands</option>
+        <option value="en">Engels</option>
+        <option value="de">Duits</option>
+        <option value="fr">Frans</option>
+        <option value="es">Spaans</option>
+      </select>
+      <span style="color: var(--text-muted); font-size:0.8rem;">— kies de taal van de ondertitels</span>
+    </div>
+  </div>
+
+  <!-- Loading status -->
+  <div id="status">
+    <div class="spinner"></div>
+    <span id="status-text">Transcript ophalen…</span>
+  </div>
+
+  <!-- Error box -->
+  <div id="error-box">
+    <strong id="error-title">Fout</strong>
+    <span id="error-msg"></span>
+  </div>
+
+  <!-- URL wissel balk -->
+  <div id="url-switch-bar" style="display:none; margin-bottom:16px;">
+    <div class="card" style="padding:14px 20px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">🎬 Geladen video:</span>
+        <input
+          type="text"
+          id="current-url-input"
+          style="flex:1; min-width:200px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--text); font-size:0.88rem; outline:none; font-family:monospace;"
+          placeholder="YouTube URL"
+          onkeydown="if(event.key==='Enter') loadNewUrl()"
+        />
+        <button class="btn" onclick="loadNewUrl()" style="padding:8px 16px; font-size:0.88rem;">▶ Laden</button>
+        <button class="btn btn-secondary" onclick="clearAndFocus()" style="padding:8px 14px; font-size:0.88rem;">✏️ Nieuw</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="stats-bar" style="display:none">
+    <div class="stat">📝 Fragmenten: <strong id="stat-total"></strong></div>
+    <div class="stat" id="stat-auto-wrap" style="display:none">⚠️ Auto-gegenereerd: <strong id="stat-auto"></strong></div>
+    <div class="stat">🌐 Taal: <strong id="stat-lang"></strong></div>
+    <div class="stat">🆔 <a id="stat-video-link" href="#" target="_blank" style="color:var(--accent); text-decoration:none; font-size:0.85rem;"><strong id="stat-video-id"></strong> ↗</a></div>
+  </div>
+
+  <!-- Segments -->
+  <div id="segments-container">
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--transcript-border)"></div>
+        📝 Handmatig transcript — tekst rechtstreeks uit de ingebedde ondertiteling
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--auto-border)"></div>
+        🤖 Auto-gegenereerd — door YouTube automatisch herkende spraak (ASR)
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--annotation-border)"></div>
+        🎵 Annotatie — geluid, muziek of beschrijving tussen haakjes
+      </div>
+    </div>
+
+    <div id="search-row">
+      <input type="text" id="search-input" placeholder="🔍 Zoek in transcript…" oninput="filterSegments()" />
+    </div>
+
+    <div class="results-header">
+      <h2>Transcript — <span id="seg-count">0</span> fragmenten</h2>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="toggleSearch()" style="padding: 8px 14px; font-size:0.85rem;">🔍 Zoeken</button>
+        <button class="btn btn-secondary" onclick="copySegments()" style="padding: 8px 14px; font-size:0.85rem;">📋 Kopieer fragmenten</button>
+      </div>
+    </div>
+
+    <div id="segments"></div>
+  </div>
+
+  <!-- Full text -->
+  <div id="fulltext-container">
+    <div class="card" style="padding: 20px;">
+      <div class="fulltext-header">
+        <h2>📄 Volledige tekst</h2>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <span class="copied-msg" id="copied-msg">✅ Gekopieerd!</span>
+          <div class="btn-group">
+            <button class="btn btn-secondary" onclick="toggleTimestamps()" style="padding: 8px 14px; font-size:0.85rem;" id="ts-toggle">⏱ Zonder tijdcodes</button>
+            <button class="btn" onclick="copyFullText()" style="padding: 8px 14px; font-size:0.85rem;">📋 Kopieer alles</button>
+          </div>
+        </div>
+      </div>
+      <textarea id="full-text" readonly></textarea>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentData = null;
+  let showTimestamps = true;
+  let searchActive = false;
+
+  const urlInput = document.getElementById('url-input');
+  const fetchBtn = document.getElementById('fetch-btn');
+  const statusDiv = document.getElementById('status');
+  const statusText = document.getElementById('status-text');
+  const errorBox = document.getElementById('error-box');
+  const errorTitle = document.getElementById('error-title');
+  const errorMsg = document.getElementById('error-msg');
+  const segmentsContainer = document.getElementById('segments-container');
+  const segmentsDiv = document.getElementById('segments');
+  const segCount = document.getElementById('seg-count');
+  const fullTextContainer = document.getElementById('fulltext-container');
+  const fullTextArea = document.getElementById('full-text');
+  const statsBar = document.getElementById('stats-bar');
+
+  // Allow pressing Enter to fetch
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') fetchTranscript();
+  });
+
+  function showStatus(msg) {
+    statusText.textContent = msg;
+    statusDiv.style.display = 'flex';
+    errorBox.style.display = 'none';
+  }
+
+  function hideStatus() {
+    statusDiv.style.display = 'none';
+  }
+
+  function showError(title, msg) {
+    hideStatus();
+    errorTitle.textContent = title;
+    errorMsg.textContent = msg;
+    errorBox.style.display = 'block';
+    segmentsContainer.style.display = 'none';
+    fullTextContainer.style.display = 'none';
+    statsBar.style.display = 'none';
+  }
+
+  async function fetchTranscript() {
+    const url = urlInput.value.trim();
+    if (!url) {
+      showError('Geen URL', 'Vul een YouTube URL in.');
+      return;
+    }
+
+    const lang = document.getElementById('lang-select').value;
+    fetchBtn.disabled = true;
+    showStatus('Transcript ophalen van YouTube…');
+
+    try {
+      const apiUrl = `/api/transcript?url=${encodeURIComponent(url)}${lang ? '&lang=' + lang : ''}`;
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+
+      hideStatus();
+
+      if (!res.ok) {
+        showError(data.error || 'Fout', data.message || 'Er is een onbekende fout opgetreden.');
+        return;
+      }
+
+      currentData = data;
+      renderResults(data);
+
+    } catch (err) {
+      showError('Verbindingsfout', 'Kan de server niet bereiken. Controleer of de server draait op poort 3000.');
+    } finally {
+      fetchBtn.disabled = false;
+    }
+  }
+
+  function renderResults(data) {
+    // Stats bar
+    const videoUrl = `https://www.youtube.com/watch?v=${data.videoId}`;
+    document.getElementById('stat-video-id').textContent = data.videoId;
+    const videoLink = document.getElementById('stat-video-link');
+    if (videoLink) videoLink.href = videoUrl;
+    document.getElementById('stat-total').textContent = data.stats.total;
+    document.getElementById('stat-lang').textContent = data.language || 'onbekend';
+    const autoWrap = document.getElementById('stat-auto-wrap');
+    if (data.isAutoGenerated || data.stats.auto > 0) {
+      autoWrap.style.display = 'flex';
+      document.getElementById('stat-auto').textContent = data.stats.auto || data.stats.total;
+    } else {
+      autoWrap.style.display = 'none';
+    }
+    statsBar.style.display = 'flex';
+
+    // Toon de URL-wissel balk met de huidige URL
+    const switchBar = document.getElementById('url-switch-bar');
+    const currentUrlInput = document.getElementById('current-url-input');
+    if (switchBar) switchBar.style.display = 'block';
+    if (currentUrlInput) currentUrlInput.value = videoUrl;
+
+    // Segments
+    segCount.textContent = data.segments.length;
+    renderSegments(data.segments);
+    segmentsContainer.style.display = 'block';
+
+    // Full text
+    fullTextArea.value = showTimestamps ? data.fullText : data.plainText;
+    fullTextContainer.style.display = 'block';
+  }
+
+  function renderSegments(segments, searchQuery = '') {
+    segmentsDiv.innerHTML = '';
+    let shown = 0;
+
+    segments.forEach(seg => {
+      if (searchQuery) {
+        const lower = seg.text.toLowerCase();
+        if (!lower.includes(searchQuery.toLowerCase())) return;
+      }
+
+      const div = document.createElement('div');
+      div.className = `segment ${seg.type}`;
+
+      const badgeClass = seg.type === 'transcript' ? 'badge-transcript'
+                        : seg.type === 'auto' ? 'badge-auto'
+                        : 'badge-annotation';
+
+      const badgeLabel = seg.type === 'transcript' ? '📝 Transcript'
+                        : seg.type === 'auto' ? '🤖 Auto-ASR'
+                        : '🎵 Annotatie';
+
+      let displayText = seg.text;
+      if (searchQuery) {
+        const re = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        displayText = displayText.replace(re, '<mark class="highlight">$1</mark>');
+      }
+
+      div.innerHTML = `
+        <span class="seg-ts">[${seg.timestamp}]</span>
+        <div class="seg-body">
+          <span class="seg-text">${displayText}</span>
+          <span class="seg-badge ${badgeClass}">${badgeLabel}</span>
+        </div>
+      `;
+      segmentsDiv.appendChild(div);
+      shown++;
+    });
+
+    segCount.textContent = shown;
+    if (shown === 0 && searchQuery) {
+      segmentsDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Geen fragmenten gevonden voor deze zoekopdracht.</div>';
+    }
+  }
+
+  function filterSegments() {
+    if (!currentData) return;
+    const q = document.getElementById('search-input').value;
+    renderSegments(currentData.segments, q);
+  }
+
+  function toggleSearch() {
+    const row = document.getElementById('search-row');
+    searchActive = !searchActive;
+    row.style.display = searchActive ? 'block' : 'none';
+    if (!searchActive) {
+      document.getElementById('search-input').value = '';
+      filterSegments();
+    } else {
+      document.getElementById('search-input').focus();
+    }
+  }
+
+  function toggleTimestamps() {
+    if (!currentData) return;
+    showTimestamps = !showTimestamps;
+    fullTextArea.value = showTimestamps ? currentData.fullText : currentData.plainText;
+    document.getElementById('ts-toggle').textContent = showTimestamps ? '⏱ Zonder tijdcodes' : '⏱ Met tijdcodes';
+  }
+
+  function copyFullText() {
+    if (!fullTextArea.value) return;
+    navigator.clipboard.writeText(fullTextArea.value).then(() => {
+      const msg = document.getElementById('copied-msg');
+      msg.style.display = 'inline';
+      setTimeout(() => msg.style.display = 'none', 2000);
+    });
+  }
+
+  function loadNewUrl() {
+    const newUrl = document.getElementById('current-url-input').value.trim();
+    if (!newUrl) return;
+    urlInput.value = newUrl;
+    fetchTranscript();
+  }
+
+  function clearAndFocus() {
+    urlInput.value = '';
+    document.getElementById('current-url-input').value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => urlInput.focus(), 400);
+  }
+
+  function copySegments() {
+    if (!currentData) return;
+    const text = currentData.segments
+      .map(s => `[${s.timestamp}] [${s.type.toUpperCase()}] ${s.text}`)
+      .join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const msg = document.getElementById('copied-msg');
+      msg.style.display = 'inline';
+      setTimeout(() => msg.style.display = 'none', 2000);
+    });
+  }
+</script>
+</body>
+</html>
